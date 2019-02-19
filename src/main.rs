@@ -59,9 +59,7 @@ fn scan_local(local_path: &Path) -> Vec<Dependency> {
             if entry.file_type().unwrap().is_dir() {
                 directories.push(entry.path());
             } else if is_dependency_file(&entry) {
-                let dependency = parse_dependency(&entry);
-                trace!("{:?} --> {:?}", entry, dependency);
-                dependencies.push(dependency);
+                dependencies.push(parse_dependency(entry.path().to_str().unwrap_or(""), local_path.to_str().unwrap_or("")));
             }
         }
     }
@@ -71,50 +69,55 @@ fn scan_local(local_path: &Path) -> Vec<Dependency> {
     dependencies
 }
 
-fn parse_dependency(file: &DirEntry) -> Dependency {
-    // DirEntry("c:/Users/stehnoc/.m2/repository\\ch\\qos\\logback\\logback-classic\\1.1.3\\logback-classic-1.1.3.jar")
-    //           |-- remove --------------------|-- group ---------|-- artifact ----|- ver -|- artifact ---|- v -|- typ
-    // <storage-dir-path>/<group-dirs>/<artifact-name>/<version>/<artifact>-<version>-<classifier>.<type>
-    // <storage-dir-path>/<group-dirs>/<artifact-name>/<version>/<artifact>-<version>.<type>
+fn parse_dependency(path: &str, repo_root: &str) -> Dependency {
+    // normalize the path string
+    // FIXME: may need to make sure no leading slash
+    let path = path.replace("\\", "/").replace(repo_root.replace("\\", "/").as_str(), "");
 
-    Dependency {
-        group: String::from(""),
-        artifact: String::from(""),
-        version: String::from(""),
-        classifier: String::from(""),
-        dep_type: String::from(""),
-    }
+    // expected patterns
+    // <group-dirs>/<artifact-name>/<version>/<artifact>-<version>-<classifier>.<type>
+    // <group-dirs>/<artifact-name>/<version>/<artifact>-<version>.<type>
+
+    let parts = path.split("/").collect::<Vec<&str>>();
+
+    let group = parts[..(parts.len() - 4)].join(".");
+    let artifact = parts[parts.len() - 3];   // this is the artifact name
+    let version = parts[parts.len() - 2];    // this is the version
+    let file_part = parts[parts.len() - 1];       // this is the artifact-version-classifier.type part
+
+    // FIXME: probably make the classifier Optional
+    // FIXME: move this parse function into Dependency impl
+
+    let tempt = format!("{}-{}", artifact, version);
+    let classifier_type = file_part.replace(&tempt, "");
+    let (classifier, dep_type) = if classifier_type.starts_with("-") {
+        let c_and_t = classifier_type.split(".").collect::<Vec<&str>>();
+        (c_and_t[0][1..].to_string(), c_and_t[1].to_string())
+    } else {
+        ("".to_string(), classifier_type[1..].to_string())
+    };
+
+    let dependency = Dependency {
+        group,
+        artifact: artifact.to_string(),
+        version: version.to_string(),
+        classifier,
+        dep_type,
+    };
+
+    trace!("{:?} --> {:?}", path, dependency);
+
+    dependency
 }
 
 fn is_dependency_file(file: &DirEntry) -> bool {
     file.file_name().to_str().unwrap_or("").ends_with(".pom") || file.file_name().to_str().unwrap_or("").ends_with(".jar")
 }
 
-/*
-    scan local repo (with ignored-groups)
-    - find all file paths ending in .pom or .jar
-    - collect Dependency objects
-    (these are the dependencies in my local repo)
-
+/* TODO: wip
     verify agaisnt remote repo
     - each dependency make HEAD request to remote repo
     - collect missing dependencies
 
     generate report
-
-    ===
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\ch\\qos\\logback\\logback-classic\\1.1.3\\logback-classic-1.1.3.jar")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\ch\\qos\\logback\\logback-classic\\1.1.3\\logback-classic-1.1.3.pom")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\cglib\\cglib-nodep\\3.1\\cglib-nodep-3.1.jar")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\cglib\\cglib-nodep\\3.1\\cglib-nodep-3.1.pom")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\backport-util-concurrent\\backport-util-concurrent\\3.1\\backport-util-concurrent-3.1.jar")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\backport-util-concurrent\\backport-util-concurrent\\3.1\\backport-util-concurrent-3.1.pom")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\avalon-framework\\avalon-framework\\4.1.3\\avalon-framework-4.1.3.pom")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\asm\\asm-util\\3.2\\asm-util-3.2.jar")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\asm\\asm-util\\3.2\\asm-util-3.2.pom")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\asm\\asm-tree\\3.3.1\\asm-tree-3.3.1.jar")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\asm\\asm-tree\\3.3.1\\asm-tree-3.3.1.pom")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\asm\\asm-tree\\3.2\\asm-tree-3.2.pom")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\asm\\asm-parent\\3.3.1\\asm-parent-3.3.1.pom")
-[INFO] Dep: DirEntry("c:/Users/stehnoc/.m2/repository\\asm\\asm-parent\\3.2\\asm-parent-3.2.pom")
 */
