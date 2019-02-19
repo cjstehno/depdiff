@@ -8,14 +8,9 @@ use std::path::Path;
 
 use clap::{App, Arg};
 
-#[derive(Debug)]
-struct Dependency {
-    group: String,
-    artifact: String,
-    version: String,
-    classifier: String,
-    dep_type: String,
-}
+use dependency::Dependency;
+
+mod dependency;
 
 fn main() {
     let matches = App::new("Repository Checking Tool")
@@ -59,7 +54,10 @@ fn scan_local(local_path: &Path) -> Vec<Dependency> {
             if entry.file_type().unwrap().is_dir() {
                 directories.push(entry.path());
             } else if is_dependency_file(&entry) {
-                dependencies.push(parse_dependency(entry.path().to_str().unwrap_or(""), local_path.to_str().unwrap_or("")));
+                dependencies.push(Dependency::parse(
+                    entry.path().to_str().unwrap_or(""),
+                    local_path.to_str().unwrap_or(""),
+                ));
             }
         }
     }
@@ -67,47 +65,6 @@ fn scan_local(local_path: &Path) -> Vec<Dependency> {
     info!("Found {} dependencies.", dependencies.len());
 
     dependencies
-}
-
-fn parse_dependency(path: &str, repo_root: &str) -> Dependency {
-    // normalize the path string
-    // FIXME: may need to make sure no leading slash
-    let path = path.replace("\\", "/").replace(repo_root.replace("\\", "/").as_str(), "");
-
-    // expected patterns
-    // <group-dirs>/<artifact-name>/<version>/<artifact>-<version>-<classifier>.<type>
-    // <group-dirs>/<artifact-name>/<version>/<artifact>-<version>.<type>
-
-    let parts = path.split("/").collect::<Vec<&str>>();
-
-    let group = parts[..(parts.len() - 4)].join(".");
-    let artifact = parts[parts.len() - 3];   // this is the artifact name
-    let version = parts[parts.len() - 2];    // this is the version
-    let file_part = parts[parts.len() - 1];       // this is the artifact-version-classifier.type part
-
-    // FIXME: probably make the classifier Optional
-    // FIXME: move this parse function into Dependency impl
-
-    let tempt = format!("{}-{}", artifact, version);
-    let classifier_type = file_part.replace(&tempt, "");
-    let (classifier, dep_type) = if classifier_type.starts_with("-") {
-        let c_and_t = classifier_type.split(".").collect::<Vec<&str>>();
-        (c_and_t[0][1..].to_string(), c_and_t[1].to_string())
-    } else {
-        ("".to_string(), classifier_type[1..].to_string())
-    };
-
-    let dependency = Dependency {
-        group,
-        artifact: artifact.to_string(),
-        version: version.to_string(),
-        classifier,
-        dep_type,
-    };
-
-    trace!("{:?} --> {:?}", path, dependency);
-
-    dependency
 }
 
 fn is_dependency_file(file: &DirEntry) -> bool {
