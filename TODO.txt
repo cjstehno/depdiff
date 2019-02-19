@@ -1,0 +1,5 @@
+- change name to `depcheck`
+
+delete or move away your local maven repo
+run a maven build to populate your local repo with only stuff for that project
+run `repodiff` on the local repo dir to determine the missing deps

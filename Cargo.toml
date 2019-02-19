@@ -1,0 +1,11 @@
+[package]
+name = "depdiff"
+version = "0.0.1"
+authors = ["stehnoc <chris.stehno@netscout.com>"]
+edition = "2018"
+
+[dependencies]
+clap = "2.32.0"
+log = "0.4"
+fern = "0.5.7"
+reqwest = "0.9.9"
