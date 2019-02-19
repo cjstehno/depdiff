@@ -2,14 +2,18 @@ extern crate clap;
 extern crate fern;
 #[macro_use]
 extern crate log;
+extern crate rayon;
 
 use std::fs::DirEntry;
 use std::path::Path;
+use std::sync::atomic::AtomicUsize;
 
 use clap::{App, Arg};
+use rayon::prelude::*;
 use reqwest::Client;
 
 use dependency::Dependency;
+use std::sync::atomic::Ordering;
 
 mod dependency;
 
@@ -42,14 +46,14 @@ fn main() {
     let local_dependencies = scan_local(Path::new(local_path));
 
     let http_client = Client::new();
-    let mut missing_count = 0;
+    let mut missing_count = AtomicUsize::new(0);
 
     info!("-- Missing Dependencies --");
-    let missing_dependencies = local_dependencies.iter().filter(|dep| !in_remote_repo(&http_client, remote_url, dep)).for_each(|dep| {
-        info!("Missing: {:?}", dep);
-        missing_count += 1;
+    let missing_dependencies = local_dependencies.par_iter().filter(|dep| !in_remote_repo(&http_client, remote_url, dep)).for_each(|dep| {
+        info!("Missing {:?}", dep);
+        missing_count.fetch_add(1, Ordering::Relaxed);
     });
-    info!(" :: Missing {} of {} dependencies.", missing_count, local_dependencies.len());
+    info!(" :::: Missing {} of {} dependencies :::: ", missing_count.get_mut(), local_dependencies.len());
 }
 
 fn in_remote_repo(client: &Client, remote_url: &str, dependency: &Dependency) -> bool {
