@@ -7,6 +7,7 @@ use std::fs::DirEntry;
 use std::path::Path;
 
 use clap::{App, Arg};
+use reqwest::Client;
 
 use dependency::Dependency;
 
@@ -40,24 +41,21 @@ fn main() {
 
     let local_dependencies = scan_local(Path::new(local_path));
 
+    let http_client = Client::new();
     let mut missing_count = 0;
 
     info!("-- Missing Dependencies --");
-    let missing_dependencies = local_dependencies.iter().filter(|dep| !in_remote_repo(remote_url, dep)).for_each(|dep| {
-        // FIXME: dump report
+    let missing_dependencies = local_dependencies.iter().filter(|dep| !in_remote_repo(&http_client, remote_url, dep)).for_each(|dep| {
         info!("Missing: {:?}", dep);
         missing_count += 1;
     });
     info!(" :: Missing {} of {} dependencies.", missing_count, local_dependencies.len());
 }
 
-fn in_remote_repo(remote_url: &str, dependency: &Dependency) -> bool {
+fn in_remote_repo(client: &Client, remote_url: &str, dependency: &Dependency) -> bool {
     trace!("Checking remote repo ({}) for dependency ({:?})...", remote_url, dependency);
 
-    let url = &format!("{}/{}", remote_url, dependency.to_url_path());
-
-    let client = reqwest::Client::new();
-    let response = client.head(url).send().unwrap();
+    let response = client.head(&format!("{}/{}", remote_url, dependency.to_url_path())).send().unwrap();
     response.status().is_success()
 }
 
