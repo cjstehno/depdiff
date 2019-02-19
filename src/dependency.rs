@@ -1,4 +1,3 @@
-
 #[derive(Debug, PartialEq)]
 pub struct Dependency {
     pub group: String,
@@ -48,6 +47,14 @@ impl Dependency {
 
         dependency
     }
+
+    pub fn to_url_path(&self) -> String {
+        let group_path = self.group.replace(".", "/");
+        match &self.classifier {
+            Some(c) => format!("{}/{}/{}/{}-{}-{}.{}", group_path, &self.artifact, &self.version, &self.artifact, &self.version, c, &self.dep_type),
+            None => format!("{}/{}/{}/{}-{}.{}", group_path, &self.artifact, &self.version, &self.artifact, &self.version, &self.dep_type)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -55,7 +62,33 @@ mod tests {
     use crate::dependency::Dependency;
 
     #[test]
-    fn parse_dep_with_classifier(){
+    fn to_path_without_classifier(){
+        let dep = Dependency {
+            group: String::from("org.something.else"),
+            artifact: String::from("frog-pond"),
+            version: String::from("1.3.4"),
+            classifier: None,
+            dep_type: String::from("jar"),
+        };
+
+        assert_eq!(dep.to_url_path(), "org/something/else/frog-pond/1.3.4/frog-pond-1.3.4.jar");
+    }
+
+    #[test]
+    fn to_path_with_classifier(){
+        let dep = Dependency {
+            group: String::from("org.something.else"),
+            artifact: String::from("frog-pond"),
+            version: String::from("1.3.4"),
+            classifier: Some(String::from("docs")),
+            dep_type: String::from("jar"),
+        };
+
+        assert_eq!(dep.to_url_path(), "org/something/else/frog-pond/1.3.4/frog-pond-1.3.4-docs.jar");
+    }
+
+    #[test]
+    fn parse_dep_with_classifier() {
         let dep = Dependency::parse("/foo/bar/org/something/else/frog-pond/1.3.4/frog-pond-1.3.4-sources.jar", "/foo/bar");
         assert_eq!(dep, Dependency {
             group: String::from("org.something.else"),
@@ -67,7 +100,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_dep_without_classifier_no_leading_slash(){
+    fn parse_dep_without_classifier_no_leading_slash() {
         let dep = Dependency::parse("/foo/bar/com/fasterxml/classmate/1.3.4/classmate-1.3.4.jar", "/foo/bar");
         assert_eq!(dep, Dependency {
             group: String::from("com.fasterxml"),
@@ -79,7 +112,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_dep_without_classifier_with_leading_slash(){
+    fn parse_dep_without_classifier_with_leading_slash() {
         let dep = Dependency::parse("/foo/bar/com/fasterxml/classmate/1.3.4/classmate-1.3.4.jar", "/foo/bar/");
         assert_eq!(dep, Dependency {
             group: String::from("com.fasterxml"),
@@ -91,7 +124,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_dep_short_group(){
+    fn parse_dep_short_group() {
         let dep = Dependency::parse("/bing/bong/antlr/antlr/2.7.7/antlr-2.7.7.pom", "/bing/bong");
         assert_eq!(dep, Dependency {
             group: String::from("antlr"),

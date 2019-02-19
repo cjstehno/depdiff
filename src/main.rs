@@ -39,6 +39,26 @@ fn main() {
         .unwrap();
 
     let local_dependencies = scan_local(Path::new(local_path));
+
+    let mut missing_count = 0;
+
+    info!("-- Missing Dependencies --");
+    let missing_dependencies = local_dependencies.iter().filter(|dep| !in_remote_repo(remote_url, dep)).for_each(|dep| {
+        // FIXME: dump report
+        info!("Missing: {:?}", dep);
+        missing_count += 1;
+    });
+    info!(" :: Missing {} of {} dependencies.", missing_count, local_dependencies.len());
+}
+
+fn in_remote_repo(remote_url: &str, dependency: &Dependency) -> bool {
+    trace!("Checking remote repo ({}) for dependency ({:?})...", remote_url, dependency);
+
+    let url = &format!("{}/{}", remote_url, dependency.to_url_path());
+
+    let client = reqwest::Client::new();
+    let response = client.head(url).send().unwrap();
+    response.status().is_success()
 }
 
 fn scan_local(local_path: &Path) -> Vec<Dependency> {
@@ -62,7 +82,7 @@ fn scan_local(local_path: &Path) -> Vec<Dependency> {
         }
     }
 
-    info!("Found {} dependencies.", dependencies.len());
+    info!("Found {} dependencies in local repository.", dependencies.len());
 
     dependencies
 }
@@ -70,11 +90,3 @@ fn scan_local(local_path: &Path) -> Vec<Dependency> {
 fn is_dependency_file(file: &DirEntry) -> bool {
     file.file_name().to_str().unwrap_or("").ends_with(".pom") || file.file_name().to_str().unwrap_or("").ends_with(".jar")
 }
-
-/* TODO: wip
-    verify agaisnt remote repo
-    - each dependency make HEAD request to remote repo
-    - collect missing dependencies
-
-    generate report
-*/
