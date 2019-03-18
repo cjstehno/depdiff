@@ -1,7 +1,7 @@
 [package]
 name = "depdiff"
 version = "0.0.1"
-authors = ["stehnoc <chris.stehno@netscout.com>"]
+authors = ["Christopher J. Stehno <chris@stehno.com>"]
 edition = "2018"
 
 [dependencies]
