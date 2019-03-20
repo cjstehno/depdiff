@@ -1,0 +1,45 @@
+name: Repository Diff Tool
+version: "0.1.0"
+author: Christopher J. Stehno <chris@stehno.com>
+about: Determines the local dependencies missing from a remote repository.
+args:
+  - verbose:
+      short: v
+      multiple: true
+      help: Sets the level of verbosity
+  - local:
+      short: l
+      long: local
+      required: true
+      takes_value: true
+      value_name: LOCAL-PATH
+      help: Path to local repository.
+  - remote:
+      short: r
+      long: remote
+      required: true
+      takes_value: true
+      value_name: REPO-URL
+      help: Remote repository URL
+  - display:
+      short: d
+      long: display
+      required: false
+      takes_value: true
+      value_name: DISPLAY-FORMAT
+      help: Specifies the result display format to be used (SHORT, PATH, and LONG; defaults to LONG)
+  - archive:
+      short: a
+      long: archive
+      required: false
+      takes_value: true
+      value_name: TAR_FILE
+      help: The missing repo files will be archived in the specified tar file.
+  - ignore:
+      short: i
+      long: ignore
+      multiple: true
+      required: false
+      takes_value: true
+      value_name: GROUP
+      help: Ignores the artifacts under the specified group (in dot-form).
