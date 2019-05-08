@@ -25,9 +25,9 @@ in the project directory. The tool binary will be in the `target/release` direct
 Running `depdiff -h` will generate the command help, which will be similar to the following:
 
 ```
-Repository Diff Tool 0.1.0
+depdiff 0.2.0
 Christopher J. Stehno <chris@stehno.com>
-Determines the local dependencies missing from a remote repository.
+Resolves and reports on artifacts in your local repository that are missing from a remote repository.
 
 USAGE:
     depdiff.exe [FLAGS] [OPTIONS] --local <LOCAL-PATH> --remote <REPO-URL>
@@ -44,4 +44,23 @@ OPTIONS:
     -i, --ignore <GROUP>...           Ignores the artifacts under the specified group (in dot-form).
     -l, --local <LOCAL-PATH>          Path to local repository.
     -r, --remote <REPO-URL>           Remote repository URL
+
 ```
+
+## Default Configuration
+
+You can provide default configuration values for the `local` and `remote` repository values in one of two ways:
+
+* In the `USER_HOME/.depdiff` directory, which you may need to create, you can create a file named `config.toml`.
+* In the working directory you can create a file named `config.toml`.
+
+The contents of the file should look like the following:
+
+```toml
+local = "/local/repo/path"
+remote = "http://some/remote/repo"
+```
+
+Both values are optional and will be overridden by any values passed in at runtime.
+
+> Note: If the `local` repository path is not specified at all, it will default to `$USER_HOME/.m2/repository`.

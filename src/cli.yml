@@ -1,7 +1,4 @@
-name: Repository Diff Tool
-version: "0.1.0"
-author: Christopher J. Stehno <chris@stehno.com>
-about: Determines the local dependencies missing from a remote repository.
+name: depdiff
 args:
   - verbose:
       short: v
@@ -10,7 +7,7 @@ args:
   - local:
       short: l
       long: local
-      required: true
+      required: false
       takes_value: true
       value_name: LOCAL-PATH
       help: Path to local repository.
@@ -43,3 +40,10 @@ args:
       takes_value: true
       value_name: GROUP
       help: Ignores the artifacts under the specified group (in dot-form).
+  - defaults:
+      long: defaults
+      multiple: false
+      required: false
+      takes_value: true
+      value_name: FILE
+      help: Specifies the runtime defaults file to be used (will check for .depdiff-defaults.yml in user-home if not specified).

@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate clap;
+extern crate dirs;
 extern crate fern;
 #[macro_use]
 extern crate log;
@@ -22,25 +23,34 @@ mod dependency;
 
 fn main() {
     let yaml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(yaml).get_matches();
+    let matches = App::from_yaml(yaml).name(crate_name!()).version(crate_version!()).author(crate_authors!("\n")).about(crate_description!())
+        .get_matches();
 
-    let local_path = matches.value_of("local").unwrap();
-    let remote_url = matches.value_of("remote").unwrap();
+    configure_logging(matches.occurrences_of("verbose"));
+
+    let mut default_repo = dirs::home_dir().unwrap();
+    default_repo.push(".m2");
+    default_repo.push("repository");
+
+    let local_path = matches.value_of("local").unwrap_or(default_repo.to_str().expect("Unable to resolve default local repo directory"));
+    debug!("Using local-repo: {}", local_path);
+
+    let remote_url = matches.value_of("remote").expect("Remote repo must be specified.");
+    debug!("Using remote-repo: {}", &remote_url);
+
     let display_fmt = DisplayFormat::from(match matches.value_of("display") {
         Some(d) => d,
         None => "LONG"
     });
 
-    configure_logging(matches.occurrences_of("verbose"));
-
     let started = Instant::now();
-    let local_dependencies = scan_local(Path::new(local_path), matches.values_of("ignore"));
+    let local_dependencies = scan_local(Path::new(&local_path), matches.values_of("ignore"));
 
     let http_client = Client::new();
 
     println!("Dependencies in local ({}) missing from remote ({})...", local_path, remote_url);
 
-    let missing_deps = local_dependencies.par_iter().filter(|dep| !in_remote_repo(&http_client, remote_url, dep)).collect::<Vec<&Dependency>>();
+    let missing_deps = local_dependencies.par_iter().filter(|dep| !in_remote_repo(&http_client, &remote_url, dep)).collect::<Vec<&Dependency>>();
 
     for dep in &missing_deps {
         println!("Missing: {}", dep.to_display(&display_fmt));
@@ -57,7 +67,7 @@ fn main() {
             let mut ordered_missing = missing_deps.iter().map(|dep| { dep.to_display(&DisplayFormat::Path) }).collect::<Vec<String>>();
             ordered_missing.sort();
 
-            archive_missing(Path::new(local_path), Path::new(tar_path), &ordered_missing);
+            archive_missing(Path::new(&local_path), Path::new(tar_path), &ordered_missing);
         }
         None => ()
     }

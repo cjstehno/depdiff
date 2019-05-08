@@ -1,5 +1,0 @@
-+ TODO +
-
-* would using file-walker be faster?
-* pull work into a lib?
-* ability to apply default configs (yml file in home directory)
